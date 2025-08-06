@@ -1,0 +1,86 @@
+{
+  //   ╔═╗╔═╗╦  ╦╔╗╔╔╦╗┬─┐┌─┐
+  //   ║╣ ╚═╗║  ║║║║ ║ ├┬┘│
+  //  o╚═╝╚═╝╩═╝╩╝╚╝ ╩ ┴└─└─┘
+  // A set of basic code conventions designed to encourage quality and consistency
+  // across your Sails app's code base.  These rules are checked against
+  // automatically any time you run `npm test`.
+  //
+  // > An additional eslintrc override file is included in the `assets/` folder
+  // > right out of the box.  This is specifically to allow for variations in acceptable
+  // > global variables between front-end JavaScript code designed to run in the browser
+  // > vs. backend code designed to run in a Node.js/Sails process.
+  //
+  // > Note: If you're using mocha, you'll want to add an extra override file to your
+  // > `test/` folder so that eslint will tolerate mocha-specific globals like `before`
+  // > and `describe`.
+  // Designed for ESLint v4.
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  // For more information about any of the rules below, check out the relevant
+  // reference page on eslint.org.  For example, to get details on "no-sequences",
+  // you would visit `http://eslint.org/docs/rules/no-sequences`.  If you're unsure
+  // or could use some advice, come by https://sailsjs.com/support.
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+  "env": {
+    "node": true
+  },
+
+  "parserOptions": {
+    "ecmaVersion": 2018
+  },
+
+  "globals": {
+    // If "no-undef" is enabled below, be sure to list all global variables that
+    // are used in this app's backend code (including the globalIds of models):
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    "Promise": true,
+    "sails": true,
+    "_": true
+    // …and any others (e.g. `"Organization": true`)
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  },
+
+  "rules": {
+    // ================== BẮT BUỘC – GIỮ NGUYÊN (rất quan trọng) ==================
+    "eqeqeq": ["error", "always"], // bắt buộc === và !==
+    "no-dupe-keys": ["error"],
+    "no-duplicate-case": ["error"],
+    "no-labels": ["error"],
+    "no-redeclare": ["error"],
+    "no-return-assign": ["error", "always"],
+    "no-sequences": ["error"],
+    "no-unreachable": ["error"],
+    "no-undef": ["error"], // BẬT LẠI – rất quan trọng ở backend!
+    "no-unused-vars": ["warn", { "args": "after-used", "caughtErrors": "all" }],
+    "no-use-before-define": [
+      "error",
+      { "functions": false, "classes": true, "variables": true }
+    ],
+
+    // ================== THƯ GIÃN MỘT CHÚT – THOÁNG NHẤT MÀ VẪN ĐẸP ==================
+    "camelcase": ["off"], // nhiều dev thích snake_case cho field DB
+    "curly": ["warn", "multi-line"], // chỉ bắt khi nhiều dòng
+    "indent": ["off"], // tắt → để Prettier lo
+    "quotes": ["off"], // tắt → để Prettier lo (single/double tùy team)
+    "semi": ["off"], // tắt → để Prettier lo
+    "semi-spacing": ["off"],
+    "semi-style": ["off"],
+    "eol-last": ["off"],
+    "no-extra-semi": ["off"],
+    "no-trailing-spaces": ["off"],
+    "linebreak-style": ["off"],
+    "comma-style": ["off"],
+    "one-var": ["off"],
+
+    // ================== CÁI NÀY GIỮ LẠI WARN HOẶC OFF TÙY THÍCH ==================
+    "prefer-arrow-callback": ["warn"], // vẫn khuyến khích arrow function
+    "no-unexpected-multiline": ["warn"],
+    "block-scoped-var": ["warn"],
+    "handle-callback-err": ["warn"], // vẫn tốt khi dùng callback kiểu cũ
+
+    // ================== CŨ QUÁ – TẮT LUÔN CHO NHẸ ==================
+    "callback-return": ["off"], // ít ai dùng callback kiểu này nữa
+    "no-mixed-spaces-and-tabs": ["off"] // Prettier lo hết
+  }
+}
