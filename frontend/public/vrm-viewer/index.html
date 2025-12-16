@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>VU-VRM</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+  <!-- three.min.js r110 -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.110.0/build/three.min.js"></script>
+
+  <!-- GLTFLoader.js -->
+  <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r110/examples/js/loaders/GLTFLoader.js"></script>
+
+  <!-- OrbitControls.js -->
+  <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r110/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- pixiv three-vrm.js -->
+  <script src="https://unpkg.com/@pixiv/three-vrm@0.3.0/lib/three-vrm.js"></script>
+
+  <script src="./script.js"></script>
+
+  <div class="chatbot-vrm-container">
+    <!-- Menu Buttons - Top left -->
+    <div class="menu-buttons">
+      <button class="menu-button chat-log-button" id="chat-log-toggle">
+        <span class="button-icon">💬</span>
+        <span class="button-label">Show Chat</span>
+      </button>
+    </div>
+
+    <!-- Chat Log - Side panel -->
+    <div class="chat-log" id="chat-log" style="display: none;">
+      <div class="chat-messages" id="chat-messages">
+        <!-- Chat messages will be added here -->
+      </div>
+    </div>
+
+    <!-- Message Input - Bottom -->
+    <div class="message-input-container">
+      <div class="message-input-wrapper">
+        <button class="start-button" id="start-button" style="display: block;">🚀 Bắt đầu</button>
+        <button class="mic-button" id="mic-button" style="display: none;">🎤</button>
+
+        <input type="text" placeholder="Message" id="message-input" class="message-input" />
+
+        <button class="send-button" id="send-button">📤</button>
+      </div>
+
+      <!-- <div class="powered-by">
+        Powered by React + CSS | Sales Assistant AI
+      </div> -->
+    </div>
+  </div>
+
+  <div class="backplate" id="backplate">
+    <h1>VU-VRM</h1>
+    <h3>A simple mic-driven VRM client</h3>
+    <h4>Mic access required / Designed for use in OBS</h4>
+    <h4>Built for hands-free webcam-free inclusivity</h4>
+
+  </div>
+
+  <div id="credits" class="credits" onclick="hideinfo()">
+    <p>v1.0 by itsTallulahhh</p>
+    <p>an Automattic Empathy</p>
+    <p>Microphone permission required</p>
+
+    <p>Click to dismiss</p>
+
+  </div>
+
+  <script>
+    // Chat functionality - Integrated with backend API
+    let chatLog = [];
+    let showChatLog = false;
+    let assistantMessage = "Xin chào! 👋 Tôi là trợ lý ảo của hệ thống ecommerce. Tôi có thể giúp bạn:\n\n🛍️ Xem sản phẩm nổi bật\n📂 Duyệt danh mục sản phẩm\n🔍 Tìm sản phẩm theo danh mục\n🛒 Thêm sản phẩm vào giỏ hàng\n📦 Đặt hàng trực tiếp\n\nBạn cần tôi hỗ trợ gì hôm nay?";
+
+    let isMicRecording = false;
+    let recognition = null;
+    let isChatStarted = false; // Track if chat has been started
+
+    // Initialize Speech Recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'vi-VN'; // Vietnamese
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = function () {
+        console.log('Voice recognition started');
+      };
+
+      recognition.onresult = function (event) {
+        const transcript = event.results[0][0].transcript;
+        messageInput.value = transcript;
+        handleSendMessage(); // Auto send after voice input
+      };
+
+      recognition.onerror = function (event) {
+        console.error('Speech recognition error:', event.error);
+        isMicRecording = false;
+        micButton.classList.remove('recording');
+      };
+
+      recognition.onend = function () {
+        isMicRecording = false;
+        micButton.classList.remove('recording');
+      };
+    } else {
+      console.warn('Speech Recognition not supported');
+    }
+
+    // DOM elements
+    const chatLogToggle = document.getElementById('chat-log-toggle');
+    const chatLogEl = document.getElementById('chat-log');
+    const chatMessagesEl = document.getElementById('chat-messages');
+    const assistantTextEl = document.getElementById('assistant-text');
+    const assistantContentEl = document.getElementById('assistant-content');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const micButton = document.getElementById('mic-button');
+    const startButton = document.getElementById('start-button');
+
+    // Initialize
+    function initChat() {
+      // Show assistant text initially - Removed to only show chat in side panel
+      // assistantTextEl.style.display = 'block';
+      // assistantContentEl.textContent = assistantMessage;
+
+      // Event listeners
+      chatLogToggle.addEventListener('click', toggleChatLog);
+      sendButton.addEventListener('click', handleSendMessage);
+      micButton.addEventListener('click', handleMicClick);
+      startButton.addEventListener('click', handleStartClick);
+      messageInput.addEventListener('keypress', handleKeyPress);
+    }
+
+    function toggleChatLog() {
+      showChatLog = !showChatLog;
+      chatLogEl.style.display = showChatLog ? 'block' : 'none';
+      chatLogToggle.querySelector('.button-icon').textContent = showChatLog ? '📝' : '💬';
+      chatLogToggle.querySelector('.button-label').textContent = showChatLog ? 'Hide Chat' : 'Show Chat';
+    }
+
+    function getProcessingAudioKey(message) {
+      const message_lower = message.toLowerCase();
+
+      // Keywords for different intents
+      if (message_lower.includes('nổi bật') || message_lower.includes('hot') || message_lower.includes('bán chạy') ||
+        message_lower.includes('featured') || message_lower.includes('xem sản phẩm')) {
+        return 'processing_featured';
+      }
+      if (message_lower.includes('chi tiết') || message_lower.includes('detail') || message_lower.includes('xem chi tiết') ||
+        message_lower.includes('thông tin sản phẩm')) {
+        return 'processing_product_details';
+      }
+
+      if (message_lower.includes('danh mục') || message_lower.includes('category') ||
+        message_lower.includes('loại') || message_lower.includes('xem danh mục')) {
+        return 'processing_categories';
+      }
+
+      if (message_lower.includes('thêm') || message_lower.includes('add') || message_lower.includes('mua') ||
+        message_lower.includes('giỏ hàng') || message_lower.includes('cart')) {
+        return 'processing_add_cart';
+      }
+
+      if (message_lower.includes('xem giỏ') || message_lower.includes('view cart') ||
+        message_lower.includes('giỏ hàng của tôi')) {
+        return 'processing_view_cart';
+      }
+
+      if (message_lower.includes('đặt hàng') || message_lower.includes('order') ||
+        message_lower.includes('thanh toán') || message_lower.includes('checkout')) {
+        return 'processing_order';
+      }
+
+      // Default to featured products for unknown intents
+      return 'processing_featured';
+    }
+
+    function handleStartClick() {
+      if (isChatStarted) return; // Prevent multiple clicks
+
+      isChatStarted = true;
+
+      // Play welcome audio
+      playPreGeneratedAudio('welcome').then(() => {
+        // After welcome audio finishes, switch to mic button
+        startButton.style.display = 'none';
+        micButton.style.display = 'block';
+
+        // Add welcome message to chat
+        const welcomeMessage = "Chào mừng quý khách đến với hệ thống bán hàng Mini CMS, em là nhân viên bán hàng của công ty chúng em";
+        addMessage('assistant', welcomeMessage);
+      }).catch(err => {
+        console.warn('Welcome audio failed:', err);
+        // Fallback: still switch buttons and add message
+        startButton.style.display = 'none';
+        micButton.style.display = 'block';
+        const welcomeMessage = "Chào mừng quý khách đến với hệ thống bán hàng Mini CMS, em là nhân viên bán hàng của công ty chúng em";
+        addMessage('assistant', welcomeMessage);
+      });
+    }
+
+    // Play pre-generated audio from backend
+    async function playPreGeneratedAudio(audioKey) {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const response = await fetch(`http://localhost:8001/pre-generated-audio/${audioKey}`);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+          const data = await response.json();
+          const audioData = data.audio_data;
+
+          // Decode base64 audio data
+          const audioBlob = new Blob(
+            [Uint8Array.from(atob(audioData), c => c.charCodeAt(0))],
+            { type: 'audio/mpeg' }
+          );
+
+          // CHỈ gọi startTTSLipsSync - không tạo Audio element
+          console.log('🎭 Starting lips sync for pre-generated audio...');
+          await startTTSLipsSync(audioBlob);
+
+          console.log(`🎵 Pre-generated audio '${audioKey}' ended`);
+          resolve();
+
+        } catch (err) {
+          console.error('Pre-generated audio error:', err);
+          reject(err);
+        }
+      });
+    }
+
+    // Add product to cart using localStorage (similar to CartContext)
+    function addToCartLocalStorage(cartInfo) {
+      try {
+        // Get current user from localStorage
+        const user = JSON.parse(localStorage.getItem('my-cms-user') || 'null');
+
+        // Create cart key
+        const userId = user?.id || null;
+        const cartKey = userId ? `my-cms-cart-${userId}` : 'my-cms-cart-guest';
+
+        // Get current cart
+        let cart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+
+        // Create product object
+        const product = {
+          id: cartInfo.product_id,
+          name: cartInfo.product_name,
+          price: cartInfo.product_price || 0,
+          image: cartInfo.product_image || '/placeholder-product.png',
+          countInStock: 999,
+          brand: cartInfo.product_brand || 'Unknown',
+        };
+
+        // Check if product already exists in cart
+        const existingItem = cart.find(item => item.product.id === product.id);
+
+        if (existingItem) {
+          existingItem.qty += cartInfo.quantity;
+        } else {
+          cart.push({
+            product: product,
+            qty: cartInfo.quantity
+          });
+        }
+
+        // Save back to localStorage
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+        console.log('Added to cart:', cartInfo);
+        return true;
+      } catch (error) {
+        console.error('Error adding to cart:', error);
+        return false;
+      }
+    }
+
+    // API call function - Sử dụng cookie-based authentication
+    async function sendMessageToAPI(userMessage) {
+      try {
+        const requestBody = {
+          user_input: userMessage,
+        };
+
+        // Thêm thông tin cart hiện tại từ localStorage
+        try {
+          const user = JSON.parse(localStorage.getItem('my-cms-user') || 'null');
+          const userId = user?.id || null;
+          const cartKey = userId ? `my-cms-cart-${userId}` : 'my-cms-cart-guest';
+          const currentCart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+
+          // Convert to chatbot API format
+          if (currentCart.length > 0) {
+            requestBody.current_cart = currentCart.map(item => ({
+              id: item.product.id,
+              name: item.product.name,
+              quantity: item.qty,
+              price: item.product.price,
+              image: item.product.image,
+              brand: item.product.brand || 'Unknown',
+            }));
+          }
+        } catch (error) {
+          console.warn('Error reading cart from localStorage:', error);
+        }
+
+        const response = await fetch('http://localhost:8001/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Gửi cookie JWT tự động
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Error calling API:', error);
+        throw error;
+      }
+    }
+
+    async function handleSendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      // Add user message
+      addMessage('user', message);
+      messageInput.value = '';
+
+      // Show loading state
+      sendButton.disabled = true;
+      sendButton.textContent = '⏳';
+
+      try {
+        // Play processing audio based on likely intent (quick classification)
+        const processingAudioKey = getProcessingAudioKey(message);
+        if (processingAudioKey) {
+          try {
+            await playPreGeneratedAudio(processingAudioKey);
+          } catch (err) {
+            console.warn('Processing audio failed:', err);
+          }
+        }
+
+        // Call API
+        const response = await sendMessageToAPI(message);
+
+        // Simulate typing delay for better UX
+        setTimeout(() => {
+          // Add bot response
+          let botMessage = response.response || 'Xin lỗi, em không thể xử lý yêu cầu này.';
+
+          // If this is an add_to_cart response with cart_info, automatically add to localStorage cart
+          if (response.intent === 'add_to_cart' && response.cart_info && response.product_info) {
+            const success = addToCartLocalStorage(response.cart_info);
+            if (success) {
+              botMessage += '\n\n✅ **Em đã thêm vào Giỏ hàng rồi ạ! Quý khách vui lòng kiểm tra giỏ hàng giúp em**';
+            }
+          }
+
+          // If this is a remove_from_cart response with updated_cart, update cart
+          if (response.intent === 'remove_from_cart' && response.updated_cart !== undefined) {
+            try {
+              const user = JSON.parse(localStorage.getItem('my-cms-user') || 'null');
+              const userId = user?.id || null;
+              const cartKey = userId ? `my-cms-cart-${userId}` : 'my-cms-cart-guest';
+              localStorage.setItem(cartKey, JSON.stringify(response.updated_cart));
+              botMessage += '\n\n✅ **Đã tự động cập nhật giỏ hàng!**';
+              // Reload page to update cart context
+              setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+              console.error('Error updating cart:', error);
+            }
+          }
+
+          // If this is an update_cart_quantity response with updated_cart, update cart
+          if (response.intent === 'update_cart_quantity' && response.updated_cart !== undefined) {
+            try {
+              const user = JSON.parse(localStorage.getItem('my-cms-user') || 'null');
+              const userId = user?.id || null;
+              const cartKey = userId ? `my-cms-cart-${userId}` : 'my-cms-cart-guest';
+              localStorage.setItem(cartKey, JSON.stringify(response.updated_cart));
+              botMessage += '\n\n✅ **Đã tự động cập nhật giỏ hàng!**';
+              // Reload page to update cart context
+              setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+              console.error('Error updating cart:', error);
+            }
+          }
+
+          addMessage('assistant', botMessage);
+          // showAssistantText(botMessage); // Removed to only show chat in side panel
+
+          // Speak the response
+          speakResponse(botMessage);
+
+          // Reset button
+          sendButton.disabled = false;
+          sendButton.textContent = '📤';
+        }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
+
+      } catch (error) {
+        console.error('Error in handleSendMessage:', error);
+
+        // Add error message
+        const errorMessage = '❌ Xin lỗi, đã có lỗi xảy ra khi kết nối với server. Vui lòng thử lại sau.\n\n💡 Lưu ý: Đảm bảo Python chatbot API đang chạy tại http://localhost:8001';
+        addMessage('assistant', errorMessage);
+        // showAssistantText(errorMessage); // Removed to only show chat in side panel
+
+        // Speak the error message
+        speakResponse(errorMessage);
+
+        // Reset button
+        sendButton.disabled = false;
+        sendButton.textContent = '📤';
+      }
+    }
+
+    function handleMicClick() {
+      if (!recognition) {
+        alert('Speech Recognition not supported in this browser');
+        return;
+      }
+
+      if (isMicRecording) {
+        recognition.stop();
+      } else {
+        isMicRecording = true;
+        micButton.classList.add('recording');
+        recognition.start();
+      }
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') {
+        handleSendMessage();
+      }
+    }
+
+    function addMessage(role, content) {
+      chatLog.push({ role, content });
+      updateChatDisplay();
+    }
+
+    function updateChatDisplay() {
+      chatMessagesEl.innerHTML = '';
+      chatLog.forEach(msg => {
+        const messageEl = document.createElement('div');
+        messageEl.className = `chat-message ${msg.role}-message`;
+
+        // Convert markdown to HTML for display
+        const formattedContent = convertMarkdownToHTML(msg.content);
+
+        messageEl.innerHTML = `
+      <div class="message-header">${msg.role === 'user' ? 'YOU' : 'CHARACTER'}</div>
+      <div class="message-content">${formattedContent}</div>
+    `;
+
+        chatMessagesEl.appendChild(messageEl);
+      });
+
+      // Auto scroll to bottom when new message is added
+      setTimeout(() => {
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      }, 100);
+    }
+
+    function showAssistantText(message) {
+      assistantContentEl.textContent = message;
+      assistantTextEl.style.display = 'block';
+    }
+
+    // Speak response using backend TTS API with Vietnamese voice
+    async function speakResponse(text) {
+      // Convert markdown to plain text for better TTS
+      text = convertMarkdownToPlainText(text);
+
+      // Replace periods with commas for better TTS flow (avoid long pauses)
+      text = text.replace(/\./g, ',');
+
+      // Gửi toàn bộ text một lần thay vì chia nhỏ
+      try {
+        await playBackendTTS(text);
+      } catch (err) {
+        console.warn("Backend TTS thất bại:", err);
+      }
+    }
+
+    // Convert markdown formatting to plain text for TTS
+    function convertMarkdownToPlainText(text) {
+      return text
+        // Remove bold/italic markers
+        .replace(/\*\*(.*?)\*\*/g, '$1')  // **bold**
+        .replace(/\*(.*?)\*/g, '$1')      // *italic*
+        .replace(/\_(.*?)\_/g, '$1')      // _italic_
+        .replace(/\~\~(.*?)\~\~/g, '$1')  // ~~strikethrough~~
+        // Remove headers
+        .replace(/^#{1,6}\s+/gm, '')       // # ## ### headers
+        // Remove links but keep text
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')  // [text](url)
+        // Remove code blocks and inline code
+        .replace(/```[\s\S]*?```/g, '')    // ```code blocks```
+        .replace(/`([^`]+)`/g, '$1')       // `inline code`
+        // Remove list markers
+        .replace(/^[\s]*[-\*\+]\s+/gm, '') // - * + list items
+        .replace(/^[\s]*\d+\.\s+/gm, '')   // 1. 2. numbered lists
+        // Remove table formatting (simplified)
+        .replace(/\|/g, ' ')               // Remove table separators
+        .replace(/^[\s]*\|[\s\-\|]*\|[\s]*$/gm, '') // Remove table headers
+        // Remove extra whitespace and line breaks
+        .replace(/\n\s*\n/g, '\n')         // Multiple newlines to single
+        .replace(/^\s+|\s+$/g, '')         // Trim whitespace
+        // Clean up any remaining markdown artifacts
+        .replace(/\s+/g, ' ');             // Multiple spaces to single
+    }
+
+    // Convert markdown formatting to HTML for display
+    function convertMarkdownToHTML(text) {
+      return text
+        // Convert bold
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // **bold**
+        // Convert italic
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')      // *italic*
+        .replace(/\_(.*?)\_/g, '<em>$1</em>')      // _italic_
+        // Convert strikethrough
+        .replace(/\~\~(.*?)\~\~/g, '<del>$1</del>')  // ~~strikethrough~~
+        // Convert headers
+        .replace(/^### (.*$)/gm, '<h3>$1</h3>')     // ### Header 3
+        .replace(/^## (.*$)/gm, '<h2>$1</h2>')      // ## Header 2
+        .replace(/^# (.*$)/gm, '<h1>$1</h1>')       // # Header 1
+        // Convert links
+        .replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank">$1</a>')  // [text](url)
+        // Convert inline code
+        .replace(/`([^`]+)`/g, '<code>$1</code>')   // `inline code`
+        // Convert code blocks (simplified)
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')  // ```code blocks```
+        // Convert lists
+        .replace(/^[\s]*[-\*\+]\s+(.*$)/gm, '<li>$1</li>')  // - * + list items
+        .replace(/^[\s]*\d+\.\s+(.*$)/gm, '<li>$1</li>')    // 1. 2. numbered lists
+        // Wrap consecutive list items
+        .replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>')
+        // Convert line breaks
+        .replace(/\n/g, '<br>')
+        // Clean up nested lists (simplified)
+        .replace(/<\/ul>\s*<ul>/g, '');
+    }
+
+    async function playBackendTTS(text) {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const response = await fetch('http://localhost:8001/tts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              text: text,
+              rate: '2.0'  // Tốc độ nói 2.0 lần
+            })
+          });
+
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+          const data = await response.json();
+          const audioData = data.audio_data;
+
+          // Decode base64 audio data
+          const audioBlob = new Blob(
+            [Uint8Array.from(atob(audioData), c => c.charCodeAt(0))],
+            { type: 'audio/mpeg' }
+          );
+
+          // CHỈ gọi startTTSLipsSync - nó sẽ lo cả phát audio và lips sync
+          console.log('🎭 Starting TTS with lips sync...');
+          await startTTSLipsSync(audioBlob);
+
+          console.log('🎵 TTS audio ended');
+          resolve();
+
+        } catch (err) {
+          console.error('TTS error:', err);
+          reject(err);
+        }
+      });
+    }
+
+    // Initialize when DOM loaded
+    document.addEventListener('DOMContentLoaded', initChat);
+  </script>
+
+</body>
+
+</html>

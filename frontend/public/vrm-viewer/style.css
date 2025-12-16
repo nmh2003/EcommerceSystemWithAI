@@ -1,0 +1,1165 @@
+* {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+}
+
+body {
+  background-color: black;
+  background-image: url("./anhNen.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+canvas {
+  position: absolute;
+  width: 100vw !important;
+  height: 100vh !important;
+  /*cursor: none;*/
+  z-index: 1;
+}
+
+.backplate {
+  position: absolute;
+  font-family: Sans-Serif;
+  color: white;
+  margin: 10px;
+  font-size: 14px;
+  opacity: 0.75;
+  font-family: Sans-Serif;
+  background-color: #2f5164;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.credits {
+  position: absolute;
+  right: 0px;
+  font-family: Sans-Serif;
+  color: white;
+  margin: 10px;
+  font-size: 14px;
+  text-align: right;
+  opacity: 0.75;
+  font-family: Sans-Serif;
+  background-color: #2f5164;
+  padding: 10px;
+  border-radius: 5px;
+  z-index: 1;
+}
+
+.infobar {
+  position: absolute;
+  bottom: 0px;
+  left: 0px;
+  font-family: Sans-Serif;
+  background-color: #2f5164;
+  margin: 10px;
+  font-size: 14px;
+  z-index: 998;
+  color: white;
+  padding: 5px;
+  border-radius: 5px;
+  opacity: 0.75;
+}
+
+.interface {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  font-family: Sans-Serif;
+  background-color: #2f5164;
+  margin: 10px;
+  font-size: 13px;
+  z-index: 999;
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  width: 200px;
+  opacity: 0.75;
+}
+
+.interface .sliders {
+}
+
+.interface .fileinput {
+  margin-top: 10px;
+}
+
+.interface .slider {
+  appearance: none;
+  width: 100%;
+  height: 13px;
+  background: #000;
+  opacity: 1;
+  margin-top: 3px;
+  margin-bottom: 3px;
+  overflow: hidden;
+  border-radius: 30px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 30px;
+}
+
+.interface .file {
+  background-color: #2f5164;
+}
+
+.interface .closebtn {
+  color: red;
+  text-align: right;
+  margin-top: -5px;
+  margin-bottom: -15px;
+  font-size: 14px;
+}
+
+.interface input[type="number"]::-webkit-inner-spin-button,
+.interface input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+.highlight {
+  background-color: black;
+  border-radius: 5px;
+  padding: 1px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 15px;
+}
+
+/* ===================================================================
+   CHATBOTVRM.CSS - STYLING CHO CHATBOT VRM (CLONE CHATVRM)
+   ===================================================================
+   🎯 MỤC ĐÍCH:
+   - Clone y xỳ đúc giao diện ChatVRM
+   - Chuyển đổi Tailwind → Pure CSS
+   - Layout: VRM viewer + Chat UI + Menu buttons
+
+   📚 KIẾN THỨC SỬ DỤNG:
+   - Buổi 2: CSS Positioning, Flexbox, Z-index
+   - CSS fundamentals: absolute, relative, flex
+   - Dark theme, responsive design
+
+   🔄 BẢNG CHUYỂN ĐỔI TAILWIND → CSS:
+   ------------------------------------------------
+   | Tailwind                  | Pure CSS                    |
+   ------------------------------------------------
+   | absolute                  | position: absolute          |
+   | top-0 left-0              | top: 0; left: 0             |
+   | w-screen h-[100svh]       | width: 100vw; height: 100svh|
+   | -z-10                     | z-index: -10                |
+   | z-10 m-24                 | z-index: 10; margin: 6rem   |
+   | bottom-0 z-20             | bottom: 0; z-index: 20      |
+   | bg-black                  | background-color: #000      |
+   | text-white                | color: #fff                 |
+   | rounded-16                | border-radius: 4rem         |
+   ------------------------------------------------
+   ===================================================================
+*/
+
+/* ============================================
+   1. CONTAINER CHÍNH
+   ============================================
+   Ý nghĩa: Container bao toàn bộ chatbot
+   Giá trị: Full screen, relative positioning
+*/
+.chatbot-vrm-container {
+  /* Position relative để chứa absolute elements */
+  position: relative;
+
+  /* Full viewport */
+  width: 100vw;
+  height: 100vh;
+
+  /* Overflow hidden để không scroll */
+  overflow: hidden;
+}
+
+/* ============================================
+   2. VRM VIEWER - BACKGROUND CANVAS
+   ============================================
+   Ecom: className="absolute top-0 left-0 w-screen h-[100svh] -z-10"
+   Ý nghĩa: Canvas VRM full screen background
+   Giá trị: Background cho avatar 3D
+*/
+.vrm-viewer {
+  /* Absolute positioning full screen */
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  /* Z-index negative để ở background */
+  z-index: -10;
+
+  /* Display flex để center content */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* VRM Canvas - Three.js rendering canvas */
+.vrm-canvas {
+  /* Explicit width and height */
+  width: 100%;
+  height: 100%;
+
+  /* Max width/height */
+  max-width: 100%;
+  max-height: 100%;
+
+  /* Object fit */
+  object-fit: contain;
+
+  /* Border radius */
+  border-radius: 1rem;
+
+  /* Box shadow */
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+
+  /* Display block */
+  display: block;
+}
+
+/* VRM Placeholder - Temporary placeholder cho VRM viewer */
+.vrm-placeholder {
+  /* Display flex */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* Width and height */
+  width: 100%;
+  height: 100%;
+
+  /* Background gradient */
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+
+  /* Border radius */
+  border-radius: 1rem;
+
+  /* Box shadow */
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
+}
+
+/* Placeholder content */
+.placeholder-content {
+  /* Text align center */
+  text-align: center;
+
+  /* Color white */
+  color: #ffffff;
+}
+
+/* Placeholder icon */
+.placeholder-icon {
+  /* Font size */
+  font-size: 4rem;
+
+  /* Margin bottom */
+  margin-bottom: 1rem;
+
+  /* Animation */
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Placeholder text */
+.placeholder-text {
+  /* Font size */
+  font-size: 2rem;
+
+  /* Font weight */
+  font-weight: bold;
+
+  /* Margin bottom */
+  margin-bottom: 0.5rem;
+
+  /* Background gradient */
+  background: linear-gradient(45deg, #ec4899, #f97316);
+
+  /* Background clip */
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  /* Color transparent */
+  -webkit-text-fill-color: transparent;
+}
+
+/* Placeholder subtitle */
+.placeholder-subtitle {
+  /* Font size */
+  font-size: 1rem;
+
+  /* Color gray */
+  color: #9ca3af;
+
+  /* Font weight */
+  font-weight: 500;
+}
+
+/* Float animation */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ============================================
+   3. MENU BUTTONS - TOP LEFT
+   ============================================
+   Ecom: className="absolute z-10 m-24"
+   Ý nghĩa: Settings và Chat log buttons
+   Giá trị: Controls cho chatbot
+*/
+.menu-buttons {
+  /* Absolute positioning top left */
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  /* Z-index high */
+  z-index: 10;
+
+  /* Margin - Tăng margin-left để tránh bị nav che */
+  margin: 2rem;
+  margin-left: 5rem;
+
+  /* Display flex */
+  display: flex;
+
+  /* Gap between buttons */
+  gap: 0.5rem;
+}
+
+/* Menu button base styles */
+.menu-button {
+  /* Display flex */
+  display: flex;
+  align-items: center;
+
+  /* Padding */
+  padding: 0.75rem 1rem;
+
+  /* Background */
+  background-color: rgba(0, 0, 0, 0.8);
+
+  /* Border */
+  border: 2px solid #ec4899;
+
+  /* Border radius */
+  border-radius: 0.5rem;
+
+  /* Color */
+  color: #ffffff;
+
+  /* Font size */
+  font-size: 0.875rem;
+
+  /* Font weight */
+  font-weight: 600;
+
+  /* Cursor */
+  cursor: pointer;
+
+  /* Transition */
+  transition: all 0.2s ease-in-out;
+
+  /* Text decoration */
+  text-decoration: none;
+}
+
+/* Menu button hover */
+.menu-button:hover:not(:disabled) {
+  /* Background brighter */
+  background-color: rgba(236, 72, 153, 0.9);
+
+  /* Transform */
+  transform: translateY(-2px);
+
+  /* Box shadow */
+  box-shadow: 0 4px 8px rgba(236, 72, 153, 0.3);
+}
+
+/* Menu button disabled */
+.menu-button:disabled {
+  /* Opacity */
+  opacity: 0.5;
+
+  /* Cursor */
+  cursor: not-allowed;
+}
+
+/* Button icon */
+.button-icon {
+  /* Font size */
+  font-size: 1.25rem;
+
+  /* Margin right */
+  margin-right: 0.5rem;
+}
+
+/* Button label */
+.button-label {
+  /* Hide on small screens */
+  display: none;
+}
+
+/* Show label on larger screens */
+@media (min-width: 768px) {
+  .button-label {
+    display: inline;
+  }
+}
+
+/* ============================================
+   4. CHAT LOG - SIDE PANEL
+   ============================================
+   Ecom: className="absolute w-col-span-6 max-w-full h-[100svh] pb-64"
+   Ý nghĩa: Conversation history panel
+   Giá trị: Xem lịch sử chat
+*/
+.chat-log {
+  /* Absolute positioning */
+  position: absolute;
+  top: 0;
+  right: 0;
+
+  /* Width */
+  width: 400px;
+  max-width: 100%;
+
+  /* Height */
+  height: 100vh;
+
+  /* Padding bottom - Giảm từ 16rem xuống 12rem */
+  padding-bottom: 12rem;
+
+  /* Z-index */
+  z-index: 15;
+
+  /* Background - Tăng độ trong suốt */
+  background-color: rgba(0, 0, 0, 0.5);
+
+  /* Border left */
+  border-left: 2px solid #ec4899;
+
+  /* Overflow */
+  overflow-y: auto;
+}
+
+/* Chat messages container */
+.chat-messages {
+  /* Padding - Giảm padding top/bottom */
+  padding: 2rem 2rem 2rem;
+
+  /* Max height */
+  max-height: calc(100vh - 16rem); /* Giới hạn chiều cao để có thể scroll */
+
+  /* Scroll vertical */
+  overflow-y: auto;
+
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #ec4899 rgba(255, 255, 255, 0.1);
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #ec4899;
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #db2777;
+}
+
+/* ============================================
+   5. CHAT MESSAGE
+   ============================================
+   Ý nghĩa: Individual message in chat log
+   Giá trị: User vs Assistant messages
+*/
+.chat-message {
+  /* Max width */
+  max-width: 300px;
+
+  /* Margin */
+  margin: 1rem auto;
+
+  /* Border radius */
+  border-radius: 0.5rem;
+
+  /* Overflow hidden */
+  overflow: hidden;
+}
+
+/* User message */
+.user-message {
+  /* Margin left auto */
+  margin-left: auto;
+  margin-right: 2rem;
+}
+
+/* Assistant message */
+.assistant-message {
+  /* Margin right auto */
+  margin-right: auto;
+  margin-left: 2rem;
+}
+
+/* Message header */
+.message-header {
+  /* Padding */
+  padding: 0.5rem 1rem;
+
+  /* Font weight */
+  font-weight: bold;
+
+  /* Font size */
+  font-size: 0.75rem;
+
+  /* Letter spacing */
+  letter-spacing: 0.1em;
+
+  /* Text transform */
+  text-transform: uppercase;
+}
+
+/* User message header */
+.user-message .message-header {
+  /* Background */
+  background-color: #374151;
+
+  /* Color */
+  color: #ffffff;
+}
+
+/* Assistant message header */
+.assistant-message .message-header {
+  /* Background pink */
+  background-color: #ec4899;
+
+  /* Color white */
+  color: #ffffff;
+}
+
+/* Message content */
+.message-content {
+  /* Padding */
+  padding: 1rem;
+
+  /* Background white */
+  background-color: #ffffff;
+
+  /* Color */
+  color: #000000;
+
+  /* Font size */
+  font-size: 1rem;
+
+  /* Font weight */
+  font-weight: bold;
+
+  /* Line height */
+  line-height: 1.5;
+}
+
+/* Assistant message content */
+.assistant-message .message-content {
+  /* Color pink */
+  color: #ec4899;
+}
+
+/* ============================================
+   MARKDOWN FORMATTING STYLES
+   ============================================
+   Ý nghĩa: Style cho các markdown elements
+   Giá trị: Hiển thị markdown đẹp trong chat
+*/
+.message-content strong {
+  font-weight: bold;
+  color: #ec4899;
+}
+
+.message-content em {
+  font-style: italic;
+  color: #db2777;
+}
+
+.message-content del {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+  font-weight: bold;
+  margin: 0.5rem 0;
+  color: #ec4899;
+}
+
+.message-content h1 {
+  font-size: 1.25rem;
+}
+
+.message-content h2 {
+  font-size: 1.125rem;
+}
+
+.message-content h3 {
+  font-size: 1rem;
+}
+
+.message-content code {
+  background-color: #1f2937;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: "Courier New", monospace;
+  font-size: 0.875rem;
+  color: #fbbf24;
+}
+
+.message-content pre {
+  background-color: #1f2937;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+}
+
+.message-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #fbbf24;
+}
+
+.message-content ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.message-content li {
+  margin: 0.25rem 0;
+  color: #ec4899;
+}
+
+.message-content a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.message-content a:hover {
+  color: #1d4ed8;
+}
+
+.message-content br {
+  display: block;
+  margin: 0.25rem 0;
+}
+
+/* ============================================
+   6. ASSISTANT TEXT - BOTTOM OVERLAY
+   ============================================
+   Ecom: className="absolute bottom-0 left-0 mb-104 w-full"
+   Ý nghĩa: AI response display
+   Giá trị: Hiện message của AI
+*/
+.assistant-text {
+  /* Absolute positioning */
+  position: absolute;
+  bottom: 0;
+  left: 0;
+
+  /* Width */
+  width: 100%;
+
+  /* Margin bottom - Giảm từ 26rem xuống 18rem để không che model */
+  margin-bottom: 18rem;
+
+  /* Z-index */
+  z-index: 25;
+
+  /* Max width */
+  max-width: 896px;
+
+  /* Margin auto */
+  margin-left: auto;
+  margin-right: auto;
+
+  /* Padding */
+  padding: 0 2rem;
+}
+
+/* Assistant text inner */
+.assistant-text > div {
+  /* Background white */
+  background-color: #ffffff;
+
+  /* Border radius */
+  border-radius: 0.5rem;
+
+  /* Overflow hidden */
+  overflow: hidden;
+}
+
+/* Assistant header */
+.assistant-header {
+  /* Padding */
+  padding: 0.5rem 1rem;
+
+  /* Background pink */
+  background-color: #ec4899;
+
+  /* Color white */
+  color: #ffffff;
+
+  /* Font weight */
+  font-weight: bold;
+
+  /* Font size */
+  font-size: 0.75rem;
+
+  /* Letter spacing */
+  letter-spacing: 0.1em;
+
+  /* Text transform */
+  text-transform: uppercase;
+}
+
+/* Assistant content */
+.assistant-content {
+  /* Padding */
+  padding: 1rem;
+
+  /* Color pink */
+  color: #ec4899;
+
+  /* Font size */
+  font-size: 1rem;
+
+  /* Font weight */
+  font-weight: bold;
+
+  /* Line height */
+  line-height: 1.5;
+}
+
+/* ============================================
+   7. MESSAGE INPUT - BOTTOM
+   ============================================
+   Ecom: className="absolute bottom-0 z-20 w-screen"
+   Ý nghĩa: Input box với mic và send
+   Giá trị: User input interface
+*/
+.message-input-container {
+  /* Absolute positioning */
+  position: absolute;
+  bottom: 0;
+
+  /* Z-index */
+  z-index: 20;
+
+  /* Width */
+  width: 100vw;
+
+  /* Background black */
+  background-color: #000000;
+
+  /* Color black (for text) */
+  color: #000000;
+}
+
+/* Message input wrapper */
+.message-input-wrapper {
+  /* Max width */
+  max-width: 896px;
+
+  /* Margin auto */
+  margin: 0 auto;
+
+  /* Padding - Giảm từ 4rem xuống 1.5rem để không che model */
+  padding: 1.5rem;
+
+  /* Display flex */
+  display: flex;
+
+  /* Align items */
+  align-items: center;
+
+  /* Gap */
+  gap: 0.5rem;
+}
+
+/* Mic button */
+.mic-button {
+  /* Size */
+  width: 3rem;
+  height: 3rem;
+
+  /* Background */
+  background-color: #6b7280;
+
+  /* Border */
+  border: none;
+
+  /* Border radius */
+  border-radius: 50%;
+
+  /* Color */
+  color: #ffffff;
+
+  /* Font size */
+  font-size: 1.25rem;
+
+  /* Cursor */
+  cursor: pointer;
+
+  /* Transition */
+  transition: all 0.2s ease-in-out;
+
+  /* Display flex */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Start button */
+.start-button {
+  /* Size */
+  width: 6rem;
+  height: 3rem;
+
+  /* Background */
+  background-color: #ec4899;
+
+  /* Border */
+  border: none;
+
+  /* Border radius */
+  border-radius: 2rem;
+
+  /* Color */
+  color: #ffffff;
+
+  /* Font size */
+  font-size: 1rem;
+
+  /* Font weight */
+  font-weight: bold;
+
+  /* Cursor */
+  cursor: pointer;
+
+  /* Transition */
+  transition: all 0.2s ease-in-out;
+
+  /* Display flex */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Gap */
+  gap: 0.25rem;
+}
+
+/* Start button hover */
+.start-button:hover:not(:disabled) {
+  /* Background brighter */
+  background-color: #db2777;
+
+  /* Transform */
+  transform: scale(1.05);
+}
+
+/* Start button disabled */
+.start-button:disabled {
+  /* Opacity */
+  opacity: 0.5;
+
+  /* Cursor */
+  cursor: not-allowed;
+}
+
+/* Mic button hover */
+.mic-button:hover:not(:disabled) {
+  /* Background brighter */
+  background-color: #9ca3af;
+
+  /* Transform */
+  transform: scale(1.05);
+}
+
+/* Mic button recording state */
+.mic-button.recording {
+  /* Background red */
+  background-color: #ef4444;
+
+  /* Animation */
+  animation: pulse 1s infinite;
+}
+
+/* Message input */
+.message-input {
+  /* Flex 1 */
+  flex: 1;
+
+  /* Padding */
+  padding: 1rem 1.5rem;
+
+  /* Background */
+  background-color: #1f2937;
+
+  /* Border */
+  border: 2px solid #374151;
+
+  /* Border radius */
+  border-radius: 4rem;
+
+  /* Color */
+  color: #ffffff;
+
+  /* Font size */
+  font-size: 1rem;
+
+  /* Font weight */
+  font-weight: bold;
+
+  /* Outline */
+  outline: none;
+
+  /* Transition */
+  transition: border-color 0.2s ease-in-out;
+}
+
+/* Message input focus */
+.message-input:focus {
+  /* Border color pink */
+  border-color: #ec4899;
+}
+
+/* Message input disabled */
+.message-input:disabled {
+  /* Opacity */
+  opacity: 0.5;
+
+  /* Cursor */
+  cursor: not-allowed;
+}
+
+/* Send button */
+.send-button {
+  /* Size */
+  width: 3rem;
+  height: 3rem;
+
+  /* Background */
+  background-color: #6b7280;
+
+  /* Border */
+  border: none;
+
+  /* Border radius */
+  border-radius: 50%;
+
+  /* Color */
+  color: #ffffff;
+
+  /* Font size */
+  font-size: 1.25rem;
+
+  /* Cursor */
+  cursor: pointer;
+
+  /* Transition */
+  transition: all 0.2s ease-in-out;
+
+  /* Display flex */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Send button hover */
+.send-button:hover:not(:disabled) {
+  /* Background pink */
+  background-color: #ec4899;
+
+  /* Transform */
+  transform: scale(1.05);
+}
+
+/* Send button disabled */
+.send-button:disabled {
+  /* Opacity */
+  opacity: 0.5;
+
+  /* Cursor */
+  cursor: not-allowed;
+}
+
+/* Powered by section */
+.powered-by {
+  /* Padding */
+  padding: 1rem;
+
+  /* Background */
+  background-color: #1f2937;
+
+  /* Text align */
+  text-align: center;
+
+  /* Color */
+  color: #ffffff;
+
+  /* Font size */
+  font-size: 0.875rem;
+}
+
+/* ============================================
+   8. ANIMATIONS
+   ============================================
+   Ý nghĩa: Pulse animation cho mic recording
+   Giá trị: Visual feedback
+*/
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* ============================================
+   9. RESPONSIVE - MEDIA QUERIES
+   ============================================
+   Ý nghĩa: Điều chỉnh cho mobile
+   Giá trị: UX tốt trên mọi thiết bị
+*/
+
+/* Tablet */
+@media (max-width: 1024px) {
+  /* Menu buttons smaller margin */
+  .menu-buttons {
+    margin: 1rem;
+    margin-left: 2rem;
+  }
+
+  /* Chat log smaller width */
+  .chat-log {
+    width: 300px;
+  }
+
+  /* Message input smaller padding */
+  .message-input-wrapper {
+    padding: 1rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  /* Menu buttons hide labels */
+  .button-label {
+    display: none !important;
+  }
+
+  /* Menu buttons smaller */
+  .menu-button {
+    padding: 0.5rem;
+  }
+
+  /* Menu buttons smaller margin */
+  .menu-buttons {
+    margin: 0.5rem;
+    margin-left: 1rem;
+  }
+
+  /* Chat log full width overlay - Tăng độ trong suốt */
+  .chat-log {
+    width: 100vw;
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  /* Assistant text smaller margin */
+  .assistant-text {
+    margin-bottom: 15rem;
+    padding: 0 1rem;
+  }
+
+  /* Message input smaller padding */
+  .message-input-wrapper {
+    padding: 0.5rem;
+    gap: 0.25rem;
+  }
+
+  /* Buttons smaller */
+  .mic-button,
+  .send-button,
+  .start-button {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1rem;
+  }
+
+  /* Start button smaller width */
+  .start-button {
+    width: 5rem;
+    font-size: 0.875rem;
+  }
+
+  /* Input smaller padding */
+  .message-input {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* VRM placeholder smaller */
+  .avatar-image {
+    width: 150px;
+    height: 150px;
+  }
+
+  .avatar-name {
+    font-size: 1rem;
+  }
+}
+
+/* ===================================================================
+   📚 TỔNG KẾT:
+   ===================================================================
+   ✅ Clone 100% giao diện ChatVRM
+   ✅ Chuyển đổi Tailwind → Pure CSS
+   ✅ Layout: VRM viewer + Chat UI + Menu
+   ✅ Hardcode background và VRM model
+   ✅ Responsive: Desktop, Tablet, Mobile
+   ✅ Dark theme với pink accents
+   ✅ Z-index layering đúng thứ tự
+   ===================================================================
+*/
