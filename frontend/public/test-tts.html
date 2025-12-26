@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Google Translate TTS</title>
+</head>
+<body>
+    <h1>Test Google Translate TTS</h1>
+    <input type="text" id="textInput" value="Xin chào! Đây là test tiếng Việt với Google Translate TTS." style="width: 400px;">
+    <button onclick="testTTS()">Test TTS</button>
+
+    <script>
+        async function testTTS() {
+            const text = document.getElementById('textInput').value;
+            console.log('Testing TTS for:', text);
+
+            try {
+                // Encode text for URL
+                const encodedText = encodeURIComponent(text);
+
+                // Google Translate TTS URL for Vietnamese
+                const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
+
+                console.log('Fetching from:', ttsUrl);
+
+                // Fetch audio from Google Translate
+                const response = await fetch(ttsUrl, {
+                    method: 'GET',
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Google TTS error: ${response.status}`);
+                }
+
+                console.log('Response received, converting to blob...');
+
+                // Get audio blob
+                const audioBlob = await response.blob();
+                console.log('Audio blob size:', audioBlob.size);
+
+                // Create audio URL and play
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+
+                // Add event listeners
+                audio.onloadeddata = () => console.log('Audio loaded successfully');
+                audio.onerror = (e) => console.error('Audio playback error:', e);
+                audio.onended = () => {
+                    console.log('Audio playback finished');
+                    URL.revokeObjectURL(audioUrl);
+                };
+
+                // Play the audio
+                await audio.play();
+                console.log('Playing audio...');
+
+            } catch (error) {
+                console.error('TTS test failed:', error);
+                alert('TTS failed: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
