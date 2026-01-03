@@ -1,0 +1,176 @@
+.profile-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem;
+  margin-top: 0rem;
+}
+
+@media (max-width: 767px) {
+  .profile-container {
+    margin-top: 2rem;
+    padding: 0.5rem;
+  }
+}
+
+.profile-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.profile-form-section {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .profile-form-section {
+    width: 33.333333%;
+  }
+}
+
+.profile-title {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.error-message {
+  background-color: #fecaca;
+  color: #991b1b;
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.success-message {
+  background-color: #d1fae5;
+  color: #065f46;
+  padding: 0.75rem 1rem;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.profile-form {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.125rem;
+  font-size: 1rem;
+  color: #1f2937;
+  background-color: #ffffff;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #ec4899;
+  box-shadow: 0 0 0 1px #ec4899;
+}
+
+.form-input::placeholder {
+  color: #9ca3af;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 767px) {
+  .form-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+.btn-update {
+  background-color: #ec4899;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex: 1;
+}
+
+.btn-update:hover:not(:disabled) {
+  background-color: #db2777;
+}
+
+.btn-update:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-update:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #ec4899;
+}
+
+.btn-orders {
+  background-color: #db2777;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex: 1;
+  display: inline-block;
+}
+
+.btn-orders:hover {
+  background-color: #be185d;
+}
+
+.btn-orders:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #db2777;
+}
+
+@media (max-width: 767px) {
+  .profile-title {
+    font-size: 1.25rem;
+  }
+
+  .form-input {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-update,
+  .btn-orders {
+    width: 100%;
+    padding: 0.75rem;
+  }
+}

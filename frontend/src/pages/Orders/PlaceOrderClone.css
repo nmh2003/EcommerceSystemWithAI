@@ -1,0 +1,135 @@
+.placeorder-container {
+  max-width: 1280px;
+  margin: 2rem auto 0;
+  padding: 0 2rem;
+}
+
+.items-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-header {
+  padding: 0.25rem;
+  text-align: left;
+  vertical-align: top;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.table-cell {
+  padding: 0.5rem;
+  color: #ffffff;
+}
+
+.item-image {
+  width: 4rem;
+  height: 4rem;
+  object-fit: cover;
+}
+
+.product-link {
+  color: #ec4899;
+  text-decoration: none;
+}
+
+.product-link:hover {
+  text-decoration: underline;
+}
+
+.order-summary-section {
+  margin-top: 2rem;
+}
+
+.summary-heading {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: #ffffff;
+}
+
+.summary-wrapper {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 2rem;
+  background-color: transparent;
+  border-radius: 0.5rem;
+  gap: 2rem;
+}
+
+.summary-list {
+  font-size: 1.125rem;
+  color: #ffffff;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.summary-item {
+  margin-bottom: 1rem;
+}
+
+.summary-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+.section-heading {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.section-text {
+  color: #cfcfcf;
+}
+
+.btn-place-order {
+  background-color: #ec4899;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 1.125rem;
+  width: 100%;
+  margin-top: 1rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.btn-place-order:hover {
+  background-color: #db2777;
+}
+
+.btn-place-order:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .placeorder-container {
+    padding: 0 1rem;
+  }
+
+  .summary-wrapper {
+    flex-direction: column;
+    padding: 1rem;
+  }
+
+  .items-table {
+    font-size: 0.875rem;
+  }
+
+  .item-image {
+    width: 3rem;
+    height: 3rem;
+  }
+}

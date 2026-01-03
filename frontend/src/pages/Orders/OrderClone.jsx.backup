@@ -1,0 +1,1210 @@
+/**
+ * ============================================================================
+ * PHASE 10A - PART 13: ORDER PAGE (CLONE ECOM)
+ * ============================================================================
+ *
+ * 📌 MỤC ĐÍCH:
+ * - Clone Order page từ Ecom sang Fin - "GIỐNG Y XÌ ĐÚC"
+ * - Hiển thị CHI TIẾT đơn hàng SAU KHI đặt hàng thành công
+ * - User có thể xem: Items table, Shipping info, Payment status, Order summary
+ * - Admin có thể: Mark as Delivered (nếu đã paid và chưa delivered)
+ *
+ * 📌 KHÁC BIỆT ECOM VS FIN:
+ * - Ecom: Redux (useGetOrderDetailsQuery), PayPal integration, useDeliverOrderMutation
+ * - Fin: fetch API (GET /api/orders/:id, PUT /api/orders/:id/deliver), localStorage userInfo, cookie JWT
+ * - Ecom: Tailwind CSS (className="container flex flex-col ml-[10rem]")
+ * - Fin: Pure CSS (.order-container { display: flex; flex-direction: column; })
+ * - Authentication: Fin dùng cookie httpOnly thay vì Authorization header như Ecom
+ *
+ * 📌 FLOW:
+ * 1. PlaceOrder page → POST /api/orders → Navigate to /order/:id
+ * 2. Order page mount → GET /api/orders/:id (fetch order details)
+ * 3. Display: Items table + Shipping info + Payment/Delivery status + Order summary
+ * 4. Admin click "Mark as Delivered" → PUT /api/orders/:id/deliver → Refetch order
+ *
+ * 📌 KIẾN THỨC ÁP DỤNG (10 BUỔI HỌC):
+ * - Buổi 6: fetch API, useEffect, async/await, loading/error state
+ * - Buổi 7: useParams (lấy order ID từ URL /order/:id)
+ * - Buổi 10: JWT token trong cookie httpOnly, credentials: "include", localStorage userInfo
+ * - Buổi 3: useState (order, loading, error, deliverLoading)
+ * - Buổi 4: Event handling (deliverHandler button click)
+ * - Buổi 2: HTML table, CSS flexbox, responsive design
+ *
+ * 📌 API ENDPOINTS:
+ * - GET http://localhost:1337/api/orders/:id (get order details)
+ * - PUT http://localhost:1337/api/orders/:id/deliver (mark as delivered - admin only)
+ * - Authentication: credentials: "include" (gửi cookie JWT httpOnly)
+ * - Headers: { "Content-Type": "application/json" }
+ */
+
+// ============================================================================
+// IMPORT CÁC DEPENDENCIES
+// ============================================================================
+
+import { useState, useEffect, useMemo } from "react";
+/**
+ * useState (Buổi 3):
+ * - Quản lý state của component (order data, loading, error)
+ * - Syntax: const [state, setState] = useState(initialValue)
+ *
+ * useEffect (Buổi 6):
+ * - Chạy side effects (fetch API, localStorage, subscriptions)
+ * - Chạy KHI component mount (dependencies = [])
+ * - Chạy KHI dependencies thay đổi (dependencies = [orderId, token])
+ *
+ * useMemo (Buổi 8):
+ * - Memoize expensive computations
+ * - Prevent unnecessary re-computations
+ * - Here: Memoize userInfo to prevent infinite re-renders
+ */
+
+import { Link, useParams } from "react-router-dom";
+/**
+ * Link (Buổi 7):
+ * - Component của React Router để tạo link
+ * - <Link to="/path">Text</Link> → Không reload page (SPA)
+ *
+ * useParams (Buổi 7):
+ * - Hook lấy URL parameters
+ * - URL: /order/abc123 → useParams() = { id: "abc123" }
+ */
+
+import Message from "../../components/Message";
+/**
+ * Message component:
+ * - Hiển thị thông báo lỗi/success/warning
+ * - Props: variant (danger/success/warning), children (message text)
+ */
+
+import Loader from "../../components/Loader";
+/**
+ * Loader component:
+ * - Hiển thị loading spinner khi đang fetch API
+ * - Component đơn giản: <div className="loader">Loading...</div>
+ */
+
+import { getUser } from "../../utils/localStorage";
+/**
+ * getUser utility:
+ * - Lấy thông tin user từ localStorage với key "my-cms-user"
+ * - Trả về user object hoặc null nếu không có
+ * - Thay thế cho localStorage.getItem("user") + JSON.parse()
+ */
+
+import { vndToUsd } from "../../utils/currency";
+/**
+ * Currency conversion utility:
+ * - vndToUsd: Convert VND to USD for PayPal integration
+ * - PayPal doesn't support VND, so we need to convert currency
+ */
+
+import "./OrderClone.css";
+/**
+ * Import CSS file để style component này
+ * - Pure CSS (KHÔNG dùng Tailwind như Ecom)
+ * - Clone Tailwind classes sang CSS thuần
+ */
+
+// ============================================================================
+// COMPONENT CHÍNH: Order
+// ============================================================================
+
+const Order = function () {
+  // -------------------------------------------------------------------------
+  // 1. LẤY ORDER ID TỪ URL
+  // -------------------------------------------------------------------------
+  /**
+   * useParams() hook từ React Router
+   *
+   * VÍ DỤ URL: /order/abc123
+   * → useParams() trả về: { id: "abc123" }
+   *
+   * Destructure để lấy id, đổi tên thành orderId cho rõ nghĩa
+   *
+   * TẠI SAO CẦN orderId?
+   * - Để gọi API GET /api/orders/:id
+   * - Để fetch chi tiết đơn hàng từ backend
+   */
+  const { id: orderId } = useParams();
+
+  // -------------------------------------------------------------------------
+  // 2. LẤY USER TOKEN TỪ LOCALSTORAGE (KHÔNG CẦN TOKEN, DÙNG COOKIE)
+  // -------------------------------------------------------------------------
+  /**
+   * Trong project này, authentication dùng JWT trong cookie httpOnly
+   * Frontend không thể đọc token từ cookie, nhưng browser tự động gửi cookie khi credentials: "include"
+   * Không cần lấy token từ localStorage như trong Ecom (dùng Redux + localStorage token)
+   *
+   * useMemo (Buổi 8): Memoize userInfo to prevent infinite re-renders
+   * - getUser() returns new object reference each call (JSON.parse)
+   * - Without memoization: userInfo changes on every render → infinite useEffect calls
+   * - With memoization: userInfo stable unless localStorage actually changes
+   */
+  const userInfo = useMemo(() => getUser(), []);
+
+  // -------------------------------------------------------------------------
+  // 3. KHAI BÁO STATE
+  // -------------------------------------------------------------------------
+
+  /**
+   * formatPriceVN - Format giá với VNĐ (giống AdminDashboard)
+   */
+  function formatPriceVN(price) {
+    if (typeof price !== "number") {
+      return "0 đ";
+    }
+    return price.toLocaleString("vi-VN") + " đ";
+  }
+
+  /**
+   * order (Buổi 3):
+   * - Lưu thông tin đơn hàng từ API
+   * - Ban đầu: null (chưa fetch)
+   * - Sau fetch: object { id, orderItems, shippingAddress, ... }
+   *
+   * ORDER OBJECT STRUCTURE (từ backend):
+   * {
+   *   _id: "order123",
+   *   user: { username: "John", email: "john@example.com" },
+   *   orderItems: [
+   *     { product: "p1", name: "Product 1", qty: 2, price: 12.99, image: "/path" }
+   *   ],
+   *   shippingAddress: {
+   *     address: "123 Main St",
+   *     city: "New York",
+   *     postalCode: "10001",
+   *     country: "USA"
+   *   },
+   *   paymentMethod: "PayPal",
+   *   itemsPrice: 25.98,
+   *   shippingPrice: 10.00,
+   *   taxPrice: 3.90,
+   *   totalPrice: 39.88,
+   *   isPaid: false,
+   *   isDelivered: false,
+   *   paidAt: null,
+   *   deliveredAt: null,
+   *   createdAt: "2025-10-16T10:00:00.000Z"
+   * }
+   */
+  const [order, setOrder] = useState(null);
+
+  /**
+   * isLoading (Buổi 6):
+   * - Trạng thái đang fetch API
+   * - true: Đang loading → Hiển thị <Loader />
+   * - false: Đã load xong → Hiển thị content
+   *
+   * TẠI SAO CẦN LOADING STATE?
+   * - Cải thiện UX: User biết app đang làm gì
+   * - Tránh hiển thị empty screen khi đang fetch
+   * - Disable buttons khi đang loading (tránh double-click)
+   */
+  const [isLoading, setIsLoading] = useState(true);
+
+  /**
+   * error (Buổi 6):
+   * - Lưu thông báo lỗi nếu fetch API thất bại
+   * - null: Không có lỗi
+   * - string: Thông báo lỗi ("Failed to fetch order", "Unauthorized", ...)
+   *
+   * ERROR CASES:
+   * - 401 Unauthorized: Token hết hạn hoặc không hợp lệ
+   * - 403 Forbidden: User không có quyền xem order này
+   * - 404 Not Found: Order ID không tồn tại
+   * - 500 Server Error: Backend lỗi
+   * - Network Error: Không connect được backend
+   */
+  const [error, setError] = useState(null);
+
+  /**
+   * deliverLoading:
+   * - Trạng thái đang gọi API "Mark as Delivered"
+   * - true: Đang loading → Disable button, show loading text
+   * - false: Idle → Button clickable
+   *
+   * TẠI SAO CẦN STATE RIÊNG?
+   * - isLoading dùng cho fetch order (mount)
+   * - deliverLoading dùng cho deliver action (click button)
+   * - Tách biệt để UI rõ ràng hơn
+   */
+  const [deliverLoading, setDeliverLoading] = useState(false);
+
+  /**
+   * paymentModal: Hiển thị modal thanh toán
+   * - true: Hiện modal nhập số tiền
+   * - false: Ẩn modal
+   */
+  const [paymentModal, setPaymentModal] = useState(false);
+
+  /**
+   * paymentAmount: Số tiền nhập vào form
+   * - String để dễ validate và format
+   */
+  const [paymentAmount, setPaymentAmount] = useState("");
+
+  /**
+   * paymentLoading: Trạng thái đang xử lý thanh toán
+   */
+  const [paymentLoading, setPaymentLoading] = useState(false);
+
+  /**
+   * PayPal states
+   */
+  const [paypalClientId, setPaypalClientId] = useState(null);
+  const [paypalLoading, setPaypalLoading] = useState(false);
+
+  // -------------------------------------------------------------------------
+  // 4. FETCH ORDER DATA KHI COMPONENT MOUNT
+  // -------------------------------------------------------------------------
+
+  /**
+   * useEffect(() => {...}, [dependencies]) (Buổi 6)
+   *
+   * CHẠY KHI NÀO?
+   * - Lần đầu component mount (render)
+   * - Khi dependencies thay đổi (orderId, token)
+   *
+   * DEPENDENCIES: [orderId, token]
+   * - orderId thay đổi → Fetch order mới (nếu navigate sang order khác)
+   * - token thay đổi → Fetch lại với token mới (nếu login/logout)
+   *
+   * TẠI SAO CẦN FETCH?
+   * - PlaceOrder page chỉ navigate với order ID
+   * - Order page cần FULL thông tin để hiển thị
+   * - Phải gọi API GET /api/orders/:id
+   */
+  useEffect(
+    function () {
+      // -----------------------------------------------------------------------
+      // BƯỚC 1: VALIDATE USER LOGIN (THAY VÌ TOKEN)
+      // -----------------------------------------------------------------------
+      /**
+       * Thay vì check token, check userInfo từ localStorage
+       * Nếu không có userInfo → User chưa login → Hiển thị error
+       * Authentication sẽ được verify bởi backend qua cookie JWT
+       */
+      if (!userInfo) {
+        setError("Vui lòng đăng nhập để xem chi tiết đơn hàng");
+        setIsLoading(false);
+        return; // Dừng execution
+      }
+
+      // -----------------------------------------------------------------------
+      // BƯỚC 2: DEFINE ASYNC FUNCTION
+      // -----------------------------------------------------------------------
+      /**
+       * TẠI SAO PHẢI TẠO ASYNC FUNCTION BÊN TRONG?
+       * - useEffect callback KHÔNG THỂ là async function trực tiếp
+       * - Phải tạo async function bên trong, rồi gọi nó
+       *
+       * PATTERN:
+       * useEffect(() => {
+       *   const fetchData = async () => { ... };
+       *   fetchData();
+       * }, []);
+       */
+      const fetchOrder = async function () {
+        try {
+          // -------------------------------------------------------------------
+          // BƯỚC 3: SET LOADING TRUE, CLEAR ERROR
+          // -------------------------------------------------------------------
+          setIsLoading(true);
+          setError(null);
+
+          // -------------------------------------------------------------------
+          // BƯỚC 4: FETCH API
+          // -------------------------------------------------------------------
+          /**
+           * fetch(url, options) (Buổi 6)
+           * - url: API endpoint với order ID
+           * - options: { method, headers }
+           *
+           * URL: http://localhost:1337/api/orders/:id
+           * - Sails.js backend chạy ở port 1337
+           * - Route: GET /api/orders/:id
+           * - Controller: OrderController.findOne()
+           *
+           * HEADERS:
+           * - Content-Type: application/json
+           *   → Server biết client gửi JSON format
+           * - Authorization: Bearer <token>
+           *   → JWT authentication
+           *   → Backend verify token, lấy user ID
+           */
+          const response = await fetch(
+            `http://localhost:1337/api/orders/${orderId}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include", // Gửi cookie JWT thay vì Authorization header
+            }
+          );
+
+          // -------------------------------------------------------------------
+          // BƯỚC 5: CHECK RESPONSE STATUS
+          // -------------------------------------------------------------------
+          /**
+           * response.ok (Buổi 6):
+           * - true: Status code 200-299 (success)
+           * - false: Status code 400-599 (error)
+           *
+           * ERROR HANDLING:
+           * - 401 Unauthorized: Token không hợp lệ
+           * - 403 Forbidden: User không có quyền
+           * - 404 Not Found: Order không tồn tại
+           * - 500 Server Error: Backend lỗi
+           */
+          if (!response.ok) {
+            // Parse error message từ backend
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to fetch order");
+          }
+
+          // -------------------------------------------------------------------
+          // BƯỚC 6: PARSE RESPONSE JSON
+          // -------------------------------------------------------------------
+          /**
+           * response.json() (Buổi 6):
+           * - Parse response body thành JavaScript object
+           * - Trả về Promise<any> → Phải await
+           *
+           * RESPONSE DATA: Order object từ backend
+           */
+          const data = await response.json();
+
+          // -------------------------------------------------------------------
+          // BƯỚC 7: UPDATE STATE
+          // -------------------------------------------------------------------
+          /**
+           * setOrder(data):
+           * - Lưu order data vào state
+           * - Component re-render
+           * - UI hiển thị order details
+           */
+          setOrder(data);
+        } catch (err) {
+          // ---------------------------------------------------------------------
+          // HANDLE ERROR
+          // ---------------------------------------------------------------------
+          /**
+           * try/catch (Buổi 6):
+           * - Catch mọi lỗi trong try block
+           * - err.message: Thông báo lỗi
+           * - setError(): Lưu error vào state
+           *
+           * ERROR TYPES:
+           * - Network error: Không connect được backend
+           * - HTTP error: response.ok = false
+           * - Parse error: response.json() failed
+           */
+          console.error("Error fetching order:", err);
+          setError(err.message);
+        } finally {
+          // ---------------------------------------------------------------------
+          // FINALLY: CHẠY DÙ SUCCESS HAY ERROR
+          // ---------------------------------------------------------------------
+          /**
+           * finally (Buổi 6):
+           * - Chạy sau try hoặc catch
+           * - Dùng để cleanup (set loading false)
+           * - Đảm bảo loading spinner tắt dù có lỗi hay không
+           */
+          setIsLoading(false);
+        }
+      };
+
+      // -----------------------------------------------------------------------
+      // BƯỚC 8: GỌI ASYNC FUNCTION
+      // -----------------------------------------------------------------------
+      fetchOrder();
+    },
+    [orderId, userInfo]
+  );
+  // Dependencies: Fetch lại khi orderId hoặc token thay đổi
+
+  // -------------------------------------------------------------------------
+  // 4B. PAYPAL INTEGRATION
+  // -------------------------------------------------------------------------
+
+  /**
+   * PayPal Integration:
+   * - Fetch PayPal client ID từ backend
+   * - Load PayPal script
+   * - Set up PayPal button
+   */
+  useEffect(() => {
+    const loadPayPal = async () => {
+      try {
+        // Fetch PayPal client ID
+        const response = await fetch(
+          "http://localhost:1337/api/config/paypal",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setPaypalClientId(data.clientId);
+        }
+      } catch (err) {
+        console.error("Error loading PayPal:", err);
+      }
+    };
+
+    loadPayPal();
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // 4C. PAYPAL BUTTON SETUP
+  // -------------------------------------------------------------------------
+
+  /**
+   * PayPal Button Setup:
+   * - Load PayPal script when client ID is available
+   * - Create PayPal button for payment
+   */
+  useEffect(() => {
+    if (!paypalClientId) {
+      console.log("⏳ Waiting for PayPal client ID...");
+      return;
+    }
+
+    console.log(
+      "🚀 Setting up PayPal button with client ID:",
+      paypalClientId.substring(0, 10) + "..."
+    );
+
+    // Load PayPal script
+    const script = document.createElement("script");
+    script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=USD`;
+    script.async = true;
+    script.onload = () => {
+      console.log("📦 PayPal script loaded successfully");
+      // PayPal script loaded, render button
+      if (window.paypal) {
+        console.log("🎯 PayPal SDK available, rendering button...");
+        window.paypal
+          .Buttons({
+            createOrder: (data, actions) => {
+              // Convert VND to USD for PayPal
+              const usdAmount = vndToUsd(order.totalPrice);
+
+              return actions.order.create({
+                purchase_units: [
+                  {
+                    amount: {
+                      value: usdAmount.toFixed(2),
+                      currency_code: "USD",
+                    },
+                    description: `Order ${order.id || order._id}`,
+                  },
+                ],
+              });
+            },
+            onApprove: async (data, actions) => {
+              try {
+                setPaypalLoading(true);
+
+                // Capture the payment
+                const details = await actions.order.capture();
+
+                // Process payment on backend
+                const response = await fetch(
+                  `http://localhost:1337/api/orders/${orderId}/pay`,
+                  {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      amount: order.totalPrice,
+                      paypalOrderId: details.id,
+                      paypalPayerId: details.payer.payer_id,
+                    }),
+                  }
+                );
+
+                if (!response.ok) {
+                  const errorData = await response.json();
+                  throw new Error(errorData.message || "PayPal payment failed");
+                }
+
+                // Refetch order to update UI
+                const orderResponse = await fetch(
+                  `http://localhost:1337/api/orders/${orderId}`,
+                  {
+                    method: "GET",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    credentials: "include",
+                  }
+                );
+
+                if (orderResponse.ok) {
+                  const updatedOrder = await orderResponse.json();
+                  setOrder(updatedOrder);
+                }
+
+                alert("Thanh toán PayPal thành công!");
+              } catch (err) {
+                console.error("PayPal payment error:", err);
+                alert("Thanh toán PayPal thất bại: " + err.message);
+              } finally {
+                setPaypalLoading(false);
+              }
+            },
+            onError: (err) => {
+              console.error("PayPal error:", err);
+              alert("Có lỗi xảy ra với PayPal. Vui lòng thử lại.");
+            },
+          })
+          .render("#paypal-button-container");
+      }
+    };
+
+    document.head.appendChild(script);
+
+    // Cleanup
+    return () => {
+      const existingScript = document.querySelector(
+        `script[src*="${paypalClientId}"]`
+      );
+      if (existingScript) {
+        document.head.removeChild(existingScript);
+      }
+    };
+  }, [paypalClientId, order, orderId]);
+
+  // -------------------------------------------------------------------------
+  // 5. HANDLER: MARK AS DELIVERED
+  // -------------------------------------------------------------------------
+
+  /**
+   * deliverHandler (Buổi 4):
+   * - Event handler khi admin click button "Mark as Delivered"
+   * - Gọi API PUT /api/orders/:id/deliver
+   * - Update isDelivered = true, deliveredAt = now
+   * - Refetch order để cập nhật UI
+   *
+   * FLOW:
+   * 1. Admin click button
+   * 2. deliverHandler() gọi
+   * 3. Set deliverLoading = true (disable button)
+   * 4. PUT /api/orders/:id/deliver
+   * 5. Refetch order (gọi lại fetch API)
+   * 6. Set deliverLoading = false
+   * 7. UI update (hiển thị "Delivered")
+   *
+   * ONLY ADMIN:
+   * - Backend check token → lấy user ID
+   * - Backend check user.isAdmin = true
+   * - Nếu không phải admin → 403 Forbidden
+   */
+  const deliverHandler = async function () {
+    try {
+      // -----------------------------------------------------------------------
+      // BƯỚC 1: SET LOADING TRUE
+      // -----------------------------------------------------------------------
+      setDeliverLoading(true);
+
+      // -----------------------------------------------------------------------
+      // BƯỚC 2: CALL API PUT
+      // -----------------------------------------------------------------------
+      /**
+       * PUT /api/orders/:id/deliver
+       * - Method: PUT (update resource)
+       * - Headers: Authorization Bearer token
+       * - Body: empty (không cần body)
+       *
+       * BACKEND ACTION:
+       * - Verify token → lấy user ID
+       * - Check user.isAdmin = true
+       * - Update order: isDelivered = true, deliveredAt = new Date()
+       * - Return updated order
+       */
+      const response = await fetch(
+        `http://localhost:1337/api/orders/${orderId}/deliver`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Gửi cookie JWT
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to mark as delivered");
+      }
+
+      // -----------------------------------------------------------------------
+      // BƯỚC 3: REFETCH ORDER
+      // -----------------------------------------------------------------------
+      /**
+       * Sau khi deliver thành công, cần refetch order
+       * - Để lấy order mới với isDelivered = true
+       * - Để UI update (show "Delivered" badge)
+       *
+       * CÁCH 1: Gọi lại fetch API (như ở useEffect)
+       * CÁCH 2: Update state trực tiếp (optimistic update)
+       *
+       * Ở đây dùng CÁCH 1 (refetch) để đảm bảo data đồng bộ
+       */
+      const orderResponse = await fetch(
+        `http://localhost:1337/api/orders/${orderId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Gửi cookie JWT
+        }
+      );
+
+      if (orderResponse.ok) {
+        const updatedOrder = await orderResponse.json();
+        setOrder(updatedOrder);
+      }
+    } catch (err) {
+      // -----------------------------------------------------------------------
+      // HANDLE ERROR
+      // -----------------------------------------------------------------------
+      console.error("Error marking as delivered:", err);
+      setError(err.message);
+    } finally {
+      // -----------------------------------------------------------------------
+      // SET LOADING FALSE
+      // -----------------------------------------------------------------------
+      setDeliverLoading(false);
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // 6. HANDLER: PAYMENT
+  // -------------------------------------------------------------------------
+
+  /**
+   * paymentHandler:
+   * - Xử lý thanh toán đơn hàng
+   * - Validate số tiền nhập vào
+   * - Gọi API PUT /api/orders/:id/pay
+   * - Update isPaid = true, paidAt = now
+   */
+  const paymentHandler = async function () {
+    try {
+      // Validate số tiền
+      const amount = parseFloat(paymentAmount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new Error("Vui lòng nhập số tiền hợp lệ");
+      }
+
+      if (amount < order.totalPrice) {
+        throw new Error(
+          `Số tiền phải ít nhất ${formatPriceVN(order.totalPrice)}`
+        );
+      }
+
+      setPaymentLoading(true);
+
+      // Gọi API thanh toán
+      const response = await fetch(
+        `http://localhost:1337/api/orders/${orderId}/pay`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ amount: amount }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Thanh toán thất bại");
+      }
+
+      // Refetch order để cập nhật UI
+      const orderResponse = await fetch(
+        `http://localhost:1337/api/orders/${orderId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
+
+      if (orderResponse.ok) {
+        const updatedOrder = await orderResponse.json();
+        setOrder(updatedOrder);
+      }
+
+      // Đóng modal và reset form
+      setPaymentModal(false);
+      setPaymentAmount("");
+    } catch (err) {
+      console.error("Error processing payment:", err);
+      setError(err.message);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // 7. RENDER LOGIC - CONDITIONAL RENDERING
+  // -------------------------------------------------------------------------
+
+  /**
+   * CONDITIONAL RENDERING (Buổi 3):
+   * 1. Nếu đang loading → Hiển thị <Loader />
+   * 2. Nếu có error → Hiển thị <Message variant="danger">
+   * 3. Nếu không có order data → Hiển thị empty message
+   * 4. Nếu có order data → Hiển thị order details
+   */
+
+  // CASE 1: Loading
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  // CASE 2: Error
+  if (error) {
+    return <Message variant="danger">{error}</Message>;
+  }
+
+  // CASE 3: No order data (edge case)
+  if (!order) {
+    return <Message variant="warning">Không tìm thấy đơn hàng</Message>;
+  }
+
+  // -------------------------------------------------------------------------
+  // 7. RENDER ORDER PAGE (CASE 4) - CLONE ECOM LAYOUT
+  // -------------------------------------------------------------------------
+
+  /**
+   * LAYOUT (CLONE ECOM):
+   * <div className="order-container">           // container flex flex-col ml-[10rem] md:flex-row
+   *   <div className="order-main">              // md:w-2/3 pr-4
+   *     <div className="order-items-section">   // border gray-300 mt-5 pb-4 mb-5
+   *       <table className="order-items-table"> // w-[80%]
+   *         // Items table: Image, Product, Quantity, Unit Price, Total
+   *       </table>
+   *     </div>
+   *   </div>
+   *
+   *   <div className="order-sidebar">           // md:w-1/3
+   *     <div className="order-shipping">        // mt-5 border-gray-300 pb-4 mb-4
+   *       // Shipping info: Order ID, Name, Email, Address, Payment method
+   *       // Payment status: Paid/Not paid
+   *     </div>
+   *
+   *     <div className="order-summary">         // (implicit)
+   *       // Order summary: Items, Shipping, Tax, Total
+   *     </div>
+   *
+   *     <div className="order-actions">         // (only admin)
+   *       <button>Mark as Delivered</button>
+   *     </div>
+   *   </div>
+   * </div>
+   */
+
+  return (
+    <div className="order-container">
+      {/* =====================================================================
+          LEFT COLUMN: ORDER ITEMS TABLE
+          ===================================================================== */}
+      <div className="order-main">
+        <div className="order-items-section">
+          {/* Check if order has items */}
+          {order.orderItems.length === 0 ? (
+            <Message>Đơn hàng trống</Message>
+          ) : (
+            <div className="table-wrapper">
+              <table className="order-items-table">
+                {/* TABLE HEADER */}
+                <thead>
+                  <tr>
+                    <th>Hình ảnh</th>
+                    <th>Sản phẩm</th>
+                    <th>Số lượng</th>
+                    <th>Đơn giá</th>
+                    <th>Tổng</th>
+                  </tr>
+                </thead>
+
+                {/* TABLE BODY */}
+                <tbody>
+                  {/**
+                   * map() (Buổi 6):
+                   * - Loop qua mỗi item trong orderItems
+                   * - Return JSX element cho mỗi item
+                   * - key={index}: React cần unique key
+                   *
+                   * ITEM OBJECT:
+                   * {
+                   *   product: "p1",        // Product ID
+                   *   name: "Product 1",    // Product name
+                   *   qty: 2,               // Quantity
+                   *   price: 12.99,         // Unit price
+                   *   image: "/path.jpg"    // Image URL
+                   * }
+                   */}
+                  {order.orderItems.map(function (item, index) {
+                    return (
+                      <tr key={index}>
+                        {/* Column 1: Image */}
+                        <td>
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="item-image"
+                          />
+                        </td>
+
+                        {/* Column 2: Product Name (Link) */}
+                        <td>
+                          {/**
+                           * Link (Buổi 7):
+                           * - Tạo link đến product detail page
+                           * - /product/:id (dynamic route)
+                           * - Không reload page (SPA)
+                           */}
+                          <Link to={`/product/${item.product}`}>
+                            {item.name}
+                          </Link>
+                        </td>
+
+                        {/* Column 3: Quantity */}
+                        <td className="text-center">{item.qty}</td>
+
+                        {/* Column 4: Unit Price */}
+                        <td className="text-center">
+                          {formatPriceVN(item.price)}
+                        </td>
+
+                        {/* Column 5: Total */}
+                        <td className="text-center">
+                          {/**
+                           * Calculate total: qty × price
+                           * formatPriceVN: Format với VNĐ
+                           * VD: 2 × 26990000 = 53980000 → "53,980,000 đ"
+                           */}
+                          {formatPriceVN(item.qty * item.price)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* =====================================================================
+          RIGHT COLUMN: SHIPPING INFO + ORDER SUMMARY
+          ===================================================================== */}
+      <div className="order-sidebar">
+        {/* ===================================================================
+            SHIPPING SECTION
+            =================================================================== */}
+        <div className="order-shipping">
+          <h2 className="section-title">Giao hàng</h2>
+
+          {/* Order ID */}
+          <p className="info-row">
+            <strong className="info-label">Đơn hàng:</strong>{" "}
+            {order.id || order._id}
+          </p>
+
+          {/* Customer Name */}
+          <p className="info-row">
+            <strong className="info-label">Tên:</strong> {order.user.username}
+          </p>
+
+          {/* Customer Email */}
+          <p className="info-row">
+            <strong className="info-label">Email:</strong> {order.user.email}
+          </p>
+
+          {/* Shipping Address */}
+          <p className="info-row">
+            <strong className="info-label">Địa chỉ:</strong>{" "}
+            {order.shippingAddress.address}, {order.shippingAddress.city}{" "}
+            {order.shippingAddress.postalCode}, {order.shippingAddress.country}
+          </p>
+
+          {/* Payment Method */}
+          <p className="info-row">
+            <strong className="info-label">Phương thức:</strong>{" "}
+            {order.paymentMethod}
+          </p>
+
+          {/* Payment Status */}
+          {/**
+           * Conditional rendering (Buổi 3):
+           * - Nếu isPaid = true → Hiển thị "Paid on [date]"
+           * - Nếu isPaid = false → Hiển thị "Not paid" + Payment button
+           *
+           * Message variant:
+           * - success: Green background (paid)
+           * - danger: Red background (not paid)
+           */}
+          {order.isPaid ? (
+            <Message variant="success">
+              Đã thanh toán vào {order.paidAt}
+            </Message>
+          ) : (
+            <div>
+              <Message variant="danger">Chưa thanh toán</Message>
+              {/* Payment Button */}
+              <button
+                type="button"
+                className="btn-payment"
+                onClick={() => setPaymentModal(true)}
+              >
+                Thanh toán
+              </button>
+
+              {/* PayPal Button */}
+              <div id="paypal-button-container" style={{ marginTop: "10px" }}>
+                {paypalLoading && <Loader />}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ===================================================================
+            ORDER SUMMARY SECTION
+            =================================================================== */}
+        <div className="order-summary">
+          <h2 className="section-title">Tóm tắt đơn hàng</h2>
+
+          {/* Items Price */}
+          <div className="summary-row">
+            <span>Sản phẩm</span>
+            <span>{formatPriceVN(order.itemsPrice)}</span>
+          </div>
+
+          {/* Shipping Price */}
+          <div className="summary-row">
+            <span>Vận chuyển</span>
+            <span>{formatPriceVN(order.shippingPrice)}</span>
+          </div>
+
+          {/* Tax Price */}
+          <div className="summary-row">
+            <span>Thuế</span>
+            <span>{formatPriceVN(order.taxPrice)}</span>
+          </div>
+
+          {/* Total Price */}
+          <div className="summary-row summary-total">
+            <span>Tổng</span>
+            <span>{formatPriceVN(order.totalPrice)}</span>
+          </div>
+        </div>
+
+        {/* ===================================================================
+            ADMIN ACTIONS: MARK AS DELIVERED
+            =================================================================== */}
+        {/**
+         * CONDITIONAL RENDERING (Buổi 3):
+         * - Chỉ hiển thị button NẾU:
+         *   + userInfo tồn tại (user đã login)
+         *   + userInfo.isAdmin = true (user là admin)
+         *   + order.isPaid = true (đơn hàng đã thanh toán)
+         *   + order.isDelivered = false (đơn hàng chưa giao)
+         *
+         * LOGIC:
+         * - Admin chỉ có thể mark as delivered NẾU order đã paid
+         * - Không thể deliver order chưa thanh toán
+         * - Nếu đã delivered rồi → Không hiển thị button
+         */}
+        {userInfo && userInfo.isAdmin && order.isPaid && !order.isDelivered && (
+          <div className="order-actions">
+            {/* Show loading text khi đang deliver */}
+            {deliverLoading && <Loader />}
+
+            {/* Deliver Button */}
+            <button
+              type="button"
+              className="btn-deliver"
+              onClick={deliverHandler}
+              disabled={deliverLoading}
+            >
+              {/**
+               * Button text:
+               * - Đang loading: "Đang đánh dấu..."
+               * - Idle: "Đánh dấu đã giao"
+               */}
+              {deliverLoading ? "Đang đánh dấu..." : "Đánh dấu đã giao"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* =====================================================================
+          PAYMENT MODAL
+          ===================================================================== */}
+      {paymentModal && (
+        <div className="payment-modal-overlay">
+          <div className="payment-modal">
+            <div className="payment-modal-header">
+              <h2>Thanh toán đơn hàng</h2>
+              <button
+                className="payment-modal-close"
+                onClick={() => setPaymentModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="payment-modal-body">
+              <div className="payment-info">
+                <p>
+                  <strong>Mã đơn hàng:</strong> {order.id || order._id}
+                </p>
+                <p>
+                  <strong>Tổng tiền:</strong> {formatPriceVN(order.totalPrice)}
+                </p>
+              </div>
+              <div className="payment-form">
+                <label htmlFor="payment-amount">Số tiền thanh toán:</label>
+                <input
+                  id="payment-amount"
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder={`Tối thiểu ${formatPriceVN(order.totalPrice)}`}
+                  min={order.totalPrice}
+                  step="0.01"
+                />
+              </div>
+            </div>
+            <div className="payment-modal-footer">
+              <button
+                type="button"
+                className="btn-cancel"
+                onClick={() => setPaymentModal(false)}
+                disabled={paymentLoading}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="btn-confirm"
+                onClick={paymentHandler}
+                disabled={paymentLoading}
+              >
+                {paymentLoading ? "Đang xử lý..." : "Xác nhận thanh toán"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Order;
+
+/**
+ * ============================================================================
+ * TỔNG KẾT KIẾN THỨC
+ * ============================================================================
+ *
+ * 1. REACT HOOKS (Buổi 9-10):
+ *    - useState: Quản lý state (order, isLoading, error, deliverLoading)
+ *    - useEffect: Fetch API khi component mount
+ *    - useParams: Lấy order ID từ URL
+ *
+ * 2. FETCH API (Buổi 6):
+ *    - GET /api/orders/:id: Lấy order details
+ *    - PUT /api/orders/:id/deliver: Mark as delivered
+ *    - async/await syntax
+ *    - try/catch/finally error handling
+ *    - JWT token trong Authorization header
+ *
+ * 3. LOCALSTORAGE (Buổi 7):
+ *    - getItem("token"): Lấy JWT token
+ *    - getItem("user"): Lấy user info
+ *    - JSON.parse(): Parse JSON string thành object
+ *
+ * 4. CONDITIONAL RENDERING (Buổi 3):
+ *    - if (loading) return <Loader />
+ *    - if (error) return <Message />
+ *    - if (!order) return empty message
+ *    - ternary: isPaid ? <success> : <danger>
+ *    - && operator: userInfo && userInfo.isAdmin && <Button />
+ *
+ * 5. ARRAY METHODS (Buổi 6):
+ *    - map(): Loop qua orderItems, render table rows
+ *
+ * 6. EVENT HANDLING (Buổi 4):
+ *    - onClick={deliverHandler}: Handle button click
+ *    - disabled={deliverLoading}: Disable button khi loading
+ *
+ * 7. CSS LAYOUT (Buổi 2):
+ *    - Flexbox: container → main (2/3) + sidebar (1/3)
+ *    - Table: thead, tbody, tr, th, td
+ *    - Responsive: @media queries
+ *
+ * 8. REACT ROUTER (Buổi 7):
+ *    - Link: <Link to="/product/:id">
+ *    - useParams: Lấy :id từ URL
+ *
+ * ============================================================================
+ * SO SÁNH ECOM VS FIN
+ * ============================================================================
+ *
+ * | Feature              | Ecom                          | Fin                          |
+ * |----------------------|-------------------------------|------------------------------|
+ * | Fetch Order          | useGetOrderDetailsQuery()     | fetch GET /api/orders/:id    |
+ * | Refetch              | refetch()                     | fetch lại trong deliverHandler|
+ * | Deliver Order        | useDeliverOrderMutation()     | fetch PUT /api/orders/:id/deliver|
+ * | Loading State        | isLoading (from query)        | useState(isLoading)          |
+ * | Error State          | error (from query)            | useState(error)              |
+ * | User Info            | useSelector(state.auth)       | localStorage.getItem("user") |
+ * | Styling              | Tailwind (className="...")    | Pure CSS (.order-container)  |
+ * | PayPal Integration   | usePayPalScriptReducer()      | N/A (not implemented)        |
+ *
+ * ============================================================================
+ * FLOW HOÀN CHỈNH
+ * ============================================================================
+ *
+ * 1. USER ACTION: Navigate to /order/:id
+ *     ↓
+ * 2. Order component mount
+ *     ↓
+ * 3. useEffect: Fetch GET /api/orders/:id
+ *     ↓
+ * 4. Backend: Verify token → Check permission → Return order
+ *     ↓
+ * 5. setOrder(data) → Component re-render
+ *     ↓
+ * 6. Display: Items table + Shipping info + Order summary
+ *     ↓
+ * 7. ADMIN ACTION (optional): Click "Mark as Delivered"
+ *     ↓
+ * 8. deliverHandler: PUT /api/orders/:id/deliver
+ *     ↓
+ * 9. Backend: Update isDelivered = true, deliveredAt = now
+ *     ↓
+ * 10. Refetch order → Update UI (show "Delivered")
+ *
+ * ============================================================================
+ */

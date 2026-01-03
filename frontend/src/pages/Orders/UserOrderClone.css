@@ -1,0 +1,136 @@
+.user-orders-container {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 2rem 1rem;
+}
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem;
+}
+
+.no-orders {
+  font-size: 1rem;
+  color: #b0b0b0;
+  text-align: center;
+  padding: 2rem;
+}
+
+.shop-link {
+  color: #ec4899;
+  text-decoration: underline;
+}
+
+.shop-link:hover {
+  color: #db2777;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #1a1a1a;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.table-header {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #0d0d0d;
+  border-bottom: 2px solid #333;
+}
+
+.table-row {
+  border-bottom: 1px solid #333;
+  transition: background-color 0.2s ease;
+}
+
+.table-row:hover {
+  background-color: #222;
+}
+
+.table-cell {
+  padding: 0.75rem 0.5rem;
+  color: #ffffff;
+  vertical-align: middle;
+}
+
+.order-image {
+  width: 6rem;
+  height: 6rem;
+  object-fit: cover;
+  border-radius: 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0;
+  width: 6rem;
+  text-align: center;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-completed {
+  background-color: #4ade80;
+  color: #000000;
+}
+
+.status-pending {
+  background-color: #f87171;
+  color: #000000;
+}
+
+.view-details-button {
+  background-color: #ec4899;
+  color: #000000;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.view-details-button:hover {
+  background-color: #db2777;
+}
+
+@media (max-width: 767px) {
+  .orders-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .order-image {
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .status-badge {
+    width: 5rem;
+    font-size: 0.75rem;
+  }
+
+  .table-header,
+  .table-cell {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.25rem;
+  }
+}
