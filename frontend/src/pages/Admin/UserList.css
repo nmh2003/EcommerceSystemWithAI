@@ -1,0 +1,15 @@
+.user-list-container {
+  margin-left: 5rem;
+}
+
+@media (max-width: 768px) {
+  .user-list-container {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-list-container {
+    margin-left: 0;
+  }
+}
