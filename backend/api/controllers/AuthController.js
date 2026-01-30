@@ -2,7 +2,6 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 module.exports = {
-
   register: async function (req, res) {
     try {
       const { fullName, email, password } = req.body;
@@ -34,7 +33,6 @@ module.exports = {
       const emailSent = await EmailService.sendOTP(email, otpCode);
 
       if (!emailSent) {
-
         await User.destroyOne({ id: user.id });
         return res.status(500).json({
           error: "Không thể gửi email xác thực. Vui lòng thử lại.",
@@ -50,7 +48,6 @@ module.exports = {
         requiresVerification: true, // Flag báo cần verify
       });
     } catch (err) {
-
       if (err.code === "E_UNIQUE") {
         return res.status(400).json({
           error: "Email đã tồn tại",
@@ -98,7 +95,11 @@ module.exports = {
         });
       }
 
-      const token = jwt.sign({ id: user.id }, "secret", { expiresIn: "24h" });
+      const token = jwt.sign(
+        { id: user.id },
+        process.env.JWT_SECRET || "your-secret-key-here",
+        { expiresIn: "24h" },
+      );
 
       delete user.password;
 
@@ -111,7 +112,6 @@ module.exports = {
 
       return res.json({ token, user });
     } catch (err) {
-
       console.error("Login error:", err);
 
       return res.status(500).json({
@@ -122,7 +122,6 @@ module.exports = {
 
   logout: async function (req, res) {
     try {
-
       res.clearCookie("jwt", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -160,7 +159,7 @@ module.exports = {
       const resetToken = crypto.randomBytes(32).toString("hex");
 
       const resetTokenExpiresAt = new Date(
-        Date.now() + 15 * 60 * 1000
+        Date.now() + 15 * 60 * 1000,
       ).toISOString();
 
       await User.updateOne({ id: user.id }).set({
@@ -175,7 +174,7 @@ module.exports = {
       const EmailService = require("../services/EmailService");
       const emailSent = await EmailService.sendResetPassword(
         user.email,
-        resetLink
+        resetLink,
       );
 
       if (!emailSent) {

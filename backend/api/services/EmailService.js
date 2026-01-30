@@ -2,25 +2,23 @@ const nodemailer = require("nodemailer");
 
 class EmailService {
   constructor() {
-
     this.transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: process.env.SMTP_PORT || 587,
+      secure: false,
       auth: {
-        user: "nguyen.minh.hieu.sinhnam2k3@gmail.com",
-        pass: "ylkb lfia pllf nhbm", // App Password (không phải password thật)
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
     });
 
     this.defaultFrom = {
-      name: "Mini CMS System",
-      address: "nguyen.minh.hieu.sinhnam2k3@gmail.com",
+      name: process.env.EMAIL_FROM_NAME || "Mini CMS System",
+      address: process.env.SMTP_USER,
     };
   }
 
   async sendOTP(toEmail, otpCode) {
-
     try {
       const mailOptions = {
         from: this.defaultFrom,
@@ -54,7 +52,6 @@ class EmailService {
   }
 
   async sendWelcome(toEmail, fullName) {
-
     try {
       const mailOptions = {
         from: this.defaultFrom,
@@ -93,7 +90,6 @@ class EmailService {
   }
 
   async sendResetPassword(toEmail, resetLink) {
-
     try {
       const mailOptions = {
         from: this.defaultFrom,
@@ -132,7 +128,6 @@ class EmailService {
   }
 
   async sendOrderConfirmation(toEmail, fullName, orderDetails) {
-
     try {
       const { orderId, items, totalPrice, shippingAddress, paymentMethod } =
         orderDetails;
@@ -149,7 +144,7 @@ class EmailService {
           }</td>
           <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">${item.price.toLocaleString()} VND</td>
         </tr>
-      `
+      `,
         )
         .join("");
 
@@ -209,9 +204,8 @@ class EmailService {
     fullName,
     orderId,
     oldStatus,
-    newStatus
+    newStatus,
   ) {
-
     try {
       const statusMessages = {
         pending: "Đang chờ xử lý",
@@ -268,7 +262,6 @@ class EmailService {
   }
 
   async sendPaymentConfirmation(toEmail, fullName, orderId, paymentAmount) {
-
     try {
       const mailOptions = {
         from: this.defaultFrom,
@@ -284,7 +277,7 @@ class EmailService {
               <h3>Mã đơn hàng: #${orderId}</h3>
               <p><strong>Số tiền thanh toán:</strong> ${paymentAmount.toLocaleString()} VND</p>
               <p><strong>Thời gian thanh toán:</strong> ${new Date().toLocaleString(
-                "vi-VN"
+                "vi-VN",
               )}</p>
             </div>
 

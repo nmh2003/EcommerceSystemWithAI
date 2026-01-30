@@ -1,16 +1,14 @@
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 
-const GEMINI_API_KEY =
-  process.env.GEMINI_API_KEY || "AIzaSyAl5693-QgRfg8Bz8wsYTfJvwVhxdmVcOU";
-const GEMINI_MODEL = "gemini-2.0-flash-lite";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-lite";
 
 const SESSION_TTL = 30 * 60 * 1000; // 30 phút tính bằng milliseconds
 const sessionStore = new Map(); // Lưu trữ session trong memory
 
 function getUserIdFromJWT(token) {
   try {
-
     const decoded = jwt.decode(token, { complete: false });
     return decoded ? decoded.userId || decoded.id : null;
   } catch (error) {
@@ -35,7 +33,6 @@ function getSessionContext(userId) {
   }
 
   if (Date.now() - session.timestamp > SESSION_TTL) {
-
     sessionStore.delete(userId.toString());
     sails.log.info(`Session expired for user ${userId}`);
     return null;
@@ -68,7 +65,7 @@ async function callGeminiAPI(prompt) {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     return response.data.candidates[0].content.parts[0].text;
@@ -79,10 +76,8 @@ async function callGeminiAPI(prompt) {
 }
 
 module.exports = {
-
   chat: async function (req, res) {
     try {
-
       const { user_input, jwt_token } = req.body;
 
       if (!user_input || typeof user_input !== "string" || !user_input.trim()) {
@@ -121,36 +116,24 @@ module.exports = {
           cart_info: classification.cart_info,
           extracted_requirements: classification.extracted_requirements,
         };
-      }
-
-      else if (intent === "view_featured_products") {
+      } else if (intent === "view_featured_products") {
         response = await handleViewFeaturedProducts(userId);
-      }
-
-      else if (intent === "view_categories") {
+      } else if (intent === "view_categories") {
         response = await handleViewCategories(userId);
-      }
-
-      else if (intent === "view_products_in_category") {
+      } else if (intent === "view_products_in_category") {
         response = await handleViewProductsInCategory(
           classification.product_info,
-          userId
+          userId,
         );
-      }
-
-      else if (intent === "add_to_cart") {
+      } else if (intent === "add_to_cart") {
         response = await handleAddToCart(
           classification.product_info,
           userId,
-          jwt_token
+          jwt_token,
         );
-      }
-
-      else if (intent === "place_order") {
+      } else if (intent === "place_order") {
         response = await handlePlaceOrder(userId, jwt_token);
-      }
-
-      else {
+      } else {
         response = {
           response:
             "❓ Xin lỗi, tôi không thể xử lý yêu cầu này. Hãy thử lại với yêu cầu rõ ràng hơn.",
@@ -305,10 +288,8 @@ function fallbackClassification(userInput) {
 
 async function handleViewFeaturedProducts(userId) {
   try {
-
     const products = await Product.find({
       isActive: true,
-
     })
       .limit(10)
       .populate("category");
@@ -551,7 +532,7 @@ async function handleAddToCart(productInfo, userId, jwtToken) {
         user: userId,
         product: product.id,
         quantity: 0,
-      }
+      },
     );
 
     await Cart.updateOne({ id: cartItem.id }).set({
@@ -562,9 +543,9 @@ async function handleAddToCart(productInfo, userId, jwtToken) {
       response: `✅ Đã thêm ${quantity} cái "${
         product.name
       }" vào giỏ hàng!\n💰 Giá: ${product.price.toLocaleString(
-        "vi-VN"
+        "vi-VN",
       )} VND/cái\n🛒 Tổng: ${(product.price * quantity).toLocaleString(
-        "vi-VN"
+        "vi-VN",
       )} VND`,
       intent: "add_to_cart",
       confidence: 0.7,
@@ -673,7 +654,7 @@ async function handlePlaceOrder(userId, jwtToken) {
       response: `✅ Đặt hàng thành công!\n🆔 Mã đơn hàng: ${
         order.id
       }\n💰 Tổng tiền: ${totalAmount.toLocaleString(
-        "vi-VN"
+        "vi-VN",
       )} VND\n📦 Trạng thái: Chờ xác nhận\n\nCảm ơn bạn đã mua hàng!`,
       intent: "place_order",
       confidence: 0.8,

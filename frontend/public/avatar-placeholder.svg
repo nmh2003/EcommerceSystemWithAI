@@ -1,0 +1,6 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="100" cy="100" r="100" fill="#ec4899"/>
+  <circle cx="100" cy="75" r="35" fill="#ffffff"/>
+  <ellipse cx="100" cy="180" rx="60" ry="40" fill="#ffffff"/>
+  <text x="100" y="220" text-anchor="middle" font-family="Arial" font-size="16" fill="#ffffff">Sales AI</text>
+</svg>
